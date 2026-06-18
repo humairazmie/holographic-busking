@@ -21,24 +21,23 @@ window.addEventListener('DOMContentLoaded', function() {
     const fileIn = document.querySelector('input[type="file"]');
     const nameIn = document.querySelector('input[type="text"]');
     
-    // Create the text feedback area
-    let status = document.getElementById('status-msg');
-    if (!status && btn) {
-        status = document.createElement('div');
-        status.id = 'status-msg';
-        status.style.marginTop = '20px';
-        status.style.color = '#ec4899'; // Pink to match your UI
-        status.style.fontWeight = 'bold';
+    const status = document.createElement('div');
+    status.style.marginTop = '20px';
+    status.style.color = '#ec4899';
+    status.style.fontWeight = 'bold';
+    
+    if (btn !== null) {
         btn.parentNode.appendChild(status);
-    }
-
-    if (btn) {
+        
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Check if user filled everything out
-            if (!fileIn  !fileIn.files[0]  !nameIn || !nameIn.value) {
-                status.innerText = "❌ Please type a name and select a video.";
+            // Paranoid mode: checking values without exclamation marks
+            const hasFile = fileIn !== null && fileIn.files.length > 0;
+            const hasName = nameIn !== null && nameIn.value !== "";
+            
+            if (hasFile === false || hasName === false) {
+                status.innerText = "Please type a name and select a video.";
                 return;
             }
 
@@ -47,11 +46,31 @@ window.addEventListener('DOMContentLoaded', function() {
             const storageRef = ref(storage, path);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
-            // The highly explicit upload loop (No shortcuts!)
             uploadTask.on('state_changed', 
                 function(snapshot) {
                     const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                    status.innerText = "📡 Uploading: " + progress + "%";
+                    status.innerText = "Uploading: " + progress + "%";
                 },
                 function(error) {
-                    status.innerText = "
+                    status.innerText = "Error: " + error.message;
+                },
+                async function() {
+                    status.innerText = "Connecting to matrix...";
+                    try {
+                        const url = await getDownloadURL(uploadTask.snapshot.ref);
+                        await addDoc(collection(db, "performances"), {
+                            stageName: nameIn.value,
+                            videoUrl: url,
+                            storagePath: path,
+                            timestamp: new Date()
+                        });
+                        status.innerText = "SUCCESS! Look at the projector!";
+                        nameIn.value = "";
+                    } catch (dbError) {
+                        status.innerText = "Database Error: " + dbError.message;
+                    }
+                }
+            );
+        });
+    }
+});
