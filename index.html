@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holographic Busking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;900&family=Orbitron:wght@600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="mainWebsite">
+        <header class="hero-banner">
+            <div class="hero-overlay">
+                <div class="hero-content">
+                    <h1 class="main-title">HOLOGRAPHIC<br><span class="neon-text">BUSKING</span></h1>
+                    <div class="title-separator"></div>
+                    <p class="hero-subtitle">THE FUTURE OF STREET PERFORMANCE ISN'T JUST LIVE—IT'S LIGHT</p>
+                </div>
+            </div>
+        </header>
+
+        <section class="story-section">
+            <div class="container grid-split-equal">
+                <div class="story-text-card">
+                    <h2 class="section-heading interactive-text">THE STORY BEHIND THE LIGHT</h2>
+                    <p class="story-para">
+                        Holographic busking, a thorough fusion of street performance, pushes the boundaries of traditional street shows. We are bringing a digital avatar of street performers and merging it onto the streets, creating immersive, glittering pop-up shows right where you walk.
+                    </p>
+                </div>
+                <div class="aesthetic-image-frame float-animation">
+                    <img src="assets/story-bg.jpg" alt="Story Visual Context" class="gallery-img">
+                </div>
+            </div>
+        </section>
+
+        <section class="street-art-section">
+            <div class="container grid-split-equal invert-mobile">
+                <div class="aesthetic-image-frame border-pink">
+                    <img src="assets/street-art.jpg" alt="Street Art Evolved" class="gallery-img img-hover-zoom">
+                    <div class="image-corner-tag">LIVE ART</div>
+                </div>
+                <div class="street-art-text-group">
+                    <h2 class="section-heading interactive-text text-right-desktop">STREET ART, EVOLVED.</h2>
+                    <p>Traditional street performance, upgraded for the future, we project dynamic energy.</p>
+                    <p class="accent-paragraph">3D live music experiences straight onto the pavement—making real human talent shine glad like stars.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="video-showcase-section">
+            <div class="container">
+                <h2 class="section-heading center-text interactive-text">VISUAL EXPERIENCES</h2>
+                <div class="video-frame-container">
+                    <video src="assets/demo-performance.mp4" autoplay loop muted playsinline controls class="showcase-video"></video>
+                    <div class="video-cyber-overlay"><span class="ambient-tag">// OVERVIEW LIVE STREAM</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="performer-section">
+            <div class="container">
+                <h2 class="section-heading center-text interactive-text">BE A PERFORMER NOW!</h2>
+                
+                <div class="grid-split-equal match-height-grid">
+                    <div class="aesthetic-image-frame border-cyan">
+                        <img src="assets/holo-preview.jpg" alt="Hologram Preview" class="gallery-img">
+                    </div>
+                    
+                    <div class="pink-conditions-card">
+                        <h3>Conditions to upload video:</h3>
+                        <ul>
+                            <li>Video uploaded must be less than 5 mins</li>
+                            <li>Advised to have a completely dark or black background</li>
+                            <li>Only one performer in the video is allowed</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="upload-console-box">
+                    <div class="upload-interface-grid" id="uploadInterface">
+                        <div class="form-inputs">
+                            <div class="input-block">
+                                <label for="stageName">STAGE NAME</label>
+                                <input type="text" id="stageName" placeholder="Enter artist name..." class="glow-input">
+                            </div>
+                            <div class="input-block">
+                                <label>UPLOAD PERFORMANCE FILE</label>
+                                <div class="upload-trigger-row">
+                                    <div class="circle-upload-btn interactive-circle">
+                                        <input type="file" id="videoUpload" accept="video/*">
+                                        <div class="arrow-icon">➔</div>
+                                    </div>
+                                    <span class="upload-hint-text">Click circle to choose media</span>
+                                </div>
+                            </div>
+                            <button id="uploadBtn" class="glow-btn">Send System Data</button>
+                        </div>
+
+                        <div class="callout-text-container">
+                            <h2 class="giant-callout-text">UPLOAD YOUR<br><span class="pink-glow-text">PERFORMANCE</span><br>HERE</h2>
+                        </div>
+                    </div>
+
+                    <div id="statusMessage" class="hidden"></div>
+                    
+                    <div id="progressContainer" class="hidden">
+                        <div class="progress-bar-bg">
+                            <div id="progressBarFill" class="progress-bar-fill"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">0%</div>
+                    </div>
+
+                    <div id="successDetails" class="hidden">
+                        <div class="queue-status-box">
+                            <h3 class="queue-title">SYSTEM READY: STAGE NAME "<span id="displayStageName"></span>"</h3>
+                            
+                            <div class="queue-numbers">
+                                <div class="queue-stat">
+                                    <span class="stat-label">QUEUE POSITION</span>
+                                    <span class="stat-value" id="queuePosition">--</span>
+                                </div>
+                                <div class="queue-stat">
+                                    <span class="stat-label">EST. PLAY TIME</span>
+                                    <span class="stat-value" id="estPlayTime">--</span>
+                                </div>
+                            </div>
+
+                            <div class="live-queue-list" style="margin-top: 25px; text-align: left; background: rgba(0, 0, 0, 0.4); padding: 20px; border: 1px solid var(--neon-cyan); border-radius: 8px;">
+                                <span class="stat-label" style="display: block; margin-bottom: 15px; color: var(--neon-cyan); letter-spacing: 2px;">// LIVE PERFORMER QUEUE</span>
+                                <ol id="queueListDisplay" style="margin: 0; padding-left: 25px; color: #fff; font-family: 'Orbitron', sans-serif; line-height: 2; font-size: 1.1rem;"></ol>
+                            </div>
+                        </div>
+
+                        <h4 class="preview-title">// YOUR HOLOGRAM PREVIEW</h4>
+                        <div class="mini-holo-preview border-cyan">
+                            <video class="mini-vid vid-top" autoplay loop muted playsinline></video>
+                            <video class="mini-vid vid-bottom" autoplay loop muted playsinline></video>
+                            <video class="mini-vid vid-left" autoplay loop muted playsinline></video>
+                            <video class="mini-vid vid-right" autoplay loop muted playsinline></video>
+                        </div>
+
+                        <button id="uploadAnotherBtn" class="glow-btn" style="margin-top: 30px;">Upload Another</button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <video id="hiddenVideoPlayer" style="display: none;"></video>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
