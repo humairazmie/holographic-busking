@@ -124,12 +124,13 @@
         let isPlaying = false;
         let currentObjectId = null;
         let currentVideoURL = null;
+        let syncMonitorInterval = null; // Holds the hardware sync monitor engine
 
         const initOverlay = document.getElementById('initOverlay');
         const idleScreen = document.getElementById('idleScreen');
         const errDisplay = document.getElementById('errorMessage');
         const videos = document.querySelectorAll('.holo-video');
-        const mainVideoTracker = videos[0];
+        const mainVideoTracker = videos[0]; // Master Clock node
         const skipBtn = document.getElementById('skipBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const scoreboardOverlay = document.getElementById('scoreboardOverlay');
@@ -174,6 +175,12 @@
 
         // ASYNC TELEMETRY BROKER (SCORE READOUT)
         async function handleVideoEnd() {
+            // Stop the active sync looping module immediately
+            if (syncMonitorInterval) {
+                clearInterval(syncMonitorInterval);
+                syncMonitorInterval = null;
+            }
+
             // Halt presentation nodes immediately
             videos.forEach(vid => vid.style.display = 'none');
             skipBtn.style.display = 'none';
@@ -184,14 +191,12 @@
             finalScoreDisplay.style.fontSize = "4rem";
 
             try {
-                // Queries background Flask instance
                 const response = await fetch('http://localhost:5000/get_score');
                 const data = await response.json();
                 
                 finalScoreDisplay.style.fontSize = "10rem"; 
                 finalScoreDisplay.innerText = data.score;
                 
-                // Triggers structural data wipe sequence across memory spaces
                 await fetch('http://localhost:5000/reset_score', { method: 'POST' });
                 
             } catch (err) {
@@ -200,7 +205,6 @@
                 finalScoreDisplay.innerText = "DATA ACCESS ERROR"; 
             }
 
-            // Standard display persistence timeout: 7 seconds
             setTimeout(() => {
                 scoreboardOverlay.style.display = 'none';
                 clearCurrentVideoAndProceed();
@@ -229,7 +233,7 @@
             }
         }
 
-        // UPDATED AUDIO HANDLING LOGIC HERE
+        // PLAYBACK AND PROJECTION CONTROLLER
         function playVideo(videoData, id) {
             isPlaying = true;
             currentObjectId = id;
@@ -244,21 +248,59 @@
                 vid.src = currentVideoURL;
                 vid.style.display = 'block';
                 
-                // ONLY the top video (index 0) has sound enabled to prevent echo
                 if (index === 0) {
                     vid.muted = false; 
                     vid.volume = 1.0;
                 } else {
-                    vid.muted = true; // Keep others muted
+                    vid.muted = true; 
                 }
 
                 vid.play().catch(e => {
                     errDisplay.innerText = "Hardware lock active. Touch screen canvas to link audio nodes.";
                 });
             });
+
+            // Start the hardware tracking engine loop (runs every 150ms)
+            startSyncMonitor();
+        }
+
+        // DYNAMIC SNAP-SYNC CONTROLLER ENGINE
+        function startSyncMonitor() {
+            if (syncMonitorInterval) clearInterval(syncMonitorInterval);
+
+            syncMonitorInterval = setInterval(() => {
+                if (!isPlaying) return;
+
+                const masterTime = mainVideoTracker.currentTime;
+
+                videos.forEach((vid, index) => {
+                    // Skip checking the master track itself
+                    if (index > 0) {
+                        // Calculate how far out of sync this track is
+                        const timeDifference = Math.abs(vid.currentTime - masterTime);
+
+                        // If out of alignment by more than 50 milliseconds, force-snap it back!
+                        if (timeDifference > 0.05) {
+                            vid.currentTime = masterTime;
+                            
+                            // Prevent video freeze by forcing it to keep running with the master state
+                            if (mainVideoTracker.paused && !vid.paused) {
+                                vid.pause();
+                            } else if (!mainVideoTracker.paused && vid.paused) {
+                                vid.play().catch(() => {});
+                            }
+                        }
+                    }
+                });
+            }, 150); // Scans alignment 6 times every second
         }
 
         function clearCurrentVideoAndProceed() {
+            if (syncMonitorInterval) {
+                clearInterval(syncMonitorInterval);
+                syncMonitorInterval = null;
+            }
+
             videos.forEach(vid => {
                 vid.style.display = 'none';
                 vid.src = '';
