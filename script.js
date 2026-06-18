@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
 
-// Your exact working Firebase credentials
 const firebaseConfig = {
   apiKey: "AIzaSyA0PxFV7MelnH1GegpyrKLxALbfZU21WsE",
   authDomain: "holographic-busking.firebaseapp.com",
@@ -17,71 +16,46 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-document.addEventListener("DOMContentLoaded", () => {
-    // Smart Element Finder (Finds inputs by type so your CSS styles don't break)
-    const nameInput = document.querySelector("input[type='text']") || document.querySelector("input");
-    const fileInput = document.querySelector("input[type='file']") || document.getElementById("fileInput");
+// Wait for the DOM to be fully loaded
+window.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('button'); // Targets your "SEND SYSTEM DATA"
+    const fileIn = document.querySelector('input[type="file"]');
+    const nameIn = document.querySelector('input[type="text"]');
     
-    // Auto-detect your "SEND SYSTEM DATA" button dynamically
-    let sendBtn = document.getElementById("sendBtn");
-    if (!sendBtn) {
-        const components = document.querySelectorAll("button, div, a");
-        for (let element of components) {
-            if (element.textContent.trim().toUpperCase() === "SEND SYSTEM DATA") {
-                sendBtn = element;
-                break;
-            }
+    // Create status display area if it doesn't exist
+    let status = document.getElementById('status-msg');
+    if (!status) {
+        status = document.createElement('div');
+        status.id = 'status-msg';
+        status.style.marginTop = '20px';
+        status.style.color = '#fff';
+        btn.parentNode.appendChild(status);
+    }
+
+    btn.onclick = async (e) => {
+        e.preventDefault();
+        if (!fileIn.files[0] || !nameIn.value) {
+            status.innerText = "Please fill in all fields.";
+            return;
         }
-    }
 
-    // Create a matching progress text indicator right underneath your button
-    let progressContainer = document.getElementById("progressContainer");
-    if (!progressContainer && sendBtn) {
-        progressContainer = document.createElement("div");
-        progressContainer.id = "progressContainer";
-        progressContainer.style.color = "#ec4899"; // Styled pink/neon to match your theme!
-        progressContainer.style.marginTop = "20px";
-        progressContainer.style.fontSize = "16px";
-        progressContainer.style.fontWeight = "bold";
-        progressContainer.style.fontFamily = "sans-serif";
-        sendBtn.parentNode.insertBefore(progressContainer, sendBtn.nextSibling);
-    }
+        const file = fileIn.files[0];
+        const path = performances/${Date.now()}_${file.name};
+        const uploadTask = uploadBytesResumable(ref(storage, path), file);
 
-    if (sendBtn) {
-        sendBtn.style.cursor = "pointer";
-        
-        sendBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            
-            const stageName = nameInput ? nameInput.value.trim() : "";
-            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
-            
-            if (!stageName || !file) {
-                progressContainer.innerHTML = "❌ Please enter a stage name and select a media file first.";
-                return;
+        uploadTask.on('state_changed', 
+            (s) => status.innerText = Uploading: ${Math.round((s.bytesTransferred/s.totalBytes)*100)}%,
+            (err) => status.innerText = "Error: " + err.message,
+            async () => {
+                const url = await getDownloadURL(uploadTask.snapshot.ref);
+                await addDoc(collection(db, "performances"), {
+                    stageName: nameIn.value,
+                    videoUrl: url,
+                    storagePath: path,
+                    timestamp: new Date()
+                });
+                status.innerText = "Upload Complete! Check the projector.";
             }
-
-            // Lock button visually during transfer
-            sendBtn.style.opacity = "0.5";
-            sendBtn.style.pointerEvents = "none";
-            
-            // Create the matching tracking variables that tv.html is waiting for
-            const uniqueFileName = ${Date.now()}_${file.name};
-            const cloudStoragePath = performances/${uniqueFileName};
-            const storageRef = ref(storage, cloudStoragePath);
-            
-            const uploadTask = uploadBytesResumable(storageRef, file);
-            
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                    progressContainer.innerHTML = 📡 Uploading Performance: ${progress}%;
-                }, 
-                (error) => {
-                    console.error("Upload Error: ", error);
-                    progressContainer.innerHTML = ❌ System Blocked: ${error.message};
-                    sendBtn.style.opacity = "1";
-                    sendBtn.style.pointerEvents = "auto";
-                }, 
-                async () => {
-                    const downloadUrl = await
+        );
+    };
+});
