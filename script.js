@@ -1,4 +1,14 @@
-} catch (err) {
+instance
+                const response = await fetch('http://localhost:5000/get_score');
+                const data = await response.json();
+                
+                finalScoreDisplay.style.fontSize = "10rem"; 
+                finalScoreDisplay.innerText = data.score;
+                
+                // Triggers structural data wipe sequence across memory spaces
+                await fetch('http://localhost:5000/reset_score', { method: 'POST' });
+                
+            } catch (err) {
                 console.warn("Telemetry Server offline.", err);
                 finalScoreDisplay.style.fontSize = "3rem";
                 finalScoreDisplay.innerText = "DATA ACCESS ERROR"; 
@@ -33,7 +43,6 @@
             }
         }
 
-        // UPDATED AUDIO HANDLING LOGIC HERE
         function playVideo(videoData, id) {
             isPlaying = true;
             currentObjectId = id;
@@ -44,18 +53,9 @@
             if (currentVideoURL) URL.revokeObjectURL(currentVideoURL);
             currentVideoURL = URL.createObjectURL(videoData.file);
 
-            videos.forEach((vid, index) => {
+            videos.forEach(vid => {
                 vid.src = currentVideoURL;
                 vid.style.display = 'block';
-                
-                // ONLY the top video (index 0) has sound enabled to prevent echo
-                if (index === 0) {
-                    vid.muted = false; 
-                    vid.volume = 1.0;
-                } else {
-                    vid.muted = true; // Keep others muted
-                }
-
                 vid.play().catch(e => {
                     errDisplay.innerText = "Hardware lock active. Touch screen canvas to link audio nodes.";
                 });
