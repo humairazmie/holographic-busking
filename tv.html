@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hologram Projector - Sync Fixed</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            font-family: sans-serif;
+        }
+
+        /* 4-Axis Display Wrapper */
+        #hologram-container {
+            position: relative;
+            width: 800px;
+            height: 800px;
+        }
+
+        /* The Master View (Top) */
+        .view-top {
+            position: absolute;
+            top: 0; left: 200px;
+            width: 400px; height: 300px;
+        }
+
+        /* Bottom View (Flipped 180°) */
+        .view-bottom {
+            position: absolute;
+            bottom: 0; left: 200px;
+            width: 400px; height: 300px;
+            transform: rotate(180deg);
+        }
+
+        /* Left View (Rotated 90° Clockwise) */
+        .view-left {
+            position: absolute;
+            left: -50px; top: 250px;
+            width: 400px; height: 300px;
+            transform: rotate(90deg);
+        }
+
+        /* Right View (Rotated 270° Clockwise) */
+        .view-right {
+            position: absolute;
+            right: -50px; top: 250px;
+            width: 400px; height: 300px;
+            transform: rotate(270deg);
+        }
+
+        video, canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px; left: 20px;
+            color: #00ff00;
+            font-size: 24px;
+            z-index: 999;
+        }
+
+        #overlay {
+            position: fixed;
+            top:0; left:0; width:100vw; height:100vh;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; z-index: 10000; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay" onclick="startProjector()">⚠️ CLICK ANYWHERE TO INITIALIZE SYSTEM</div>
+    <div id="hud">AWAITING NEXT PERFORMER...</div>
+
+    <div id="hologram-container">
+        <video id="master-video" style="display:none;" crossorigin="anonymous" playsinline></video>
+
+        <div class="view-top"><canvas id="canvas-top" width="400" height="300"></canvas></div>
+        <div class="view-left"><canvas id="canvas-left" width="400" height="300"></canvas></div>
+        <div class="view-right"><canvas id="canvas-right" width="400" height="300"></canvas></div>
+        <div class="view-bottom"><canvas id="canvas-bottom" width="400" height="300"></canvas></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+        import { getStorage, ref, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
+        // Integrated Active Infrastructure Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0PxFV7MelnH1GegpyrKLxALbfZU21WsE",
+            authDomain: "holographic-busking.firebaseapp.com",
+            projectId: "holographic-busking",
+            storageBucket: "holographic-busking.firebasestorage.app",
+            messagingSenderId: "665073004121",
+            appId: "1:665073004121:web:ee782335edab05f73dcb48",
+            measurementId: "G-9YT7M4TC02"
+        };
+
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getFirestore(firebaseApp);
+        const storage = getStorage(firebaseApp);
+
+        const masterVideo = document.getElementById('master-video');
+        const hud = document.getElementById('hud');
+
+        // Canvases
+        const cTop = document.getElementById('canvas-top').getContext('2d');
+        const cLeft = document.getElementById('canvas-left').getContext('2d');
+        const cRight = document.getElementById('canvas-right').getContext('2d');
+        const cBottom = document.getElementById('canvas-bottom').getContext('2d');
+        const canvases = [cTop, cLeft, cRight, cBottom];
+
+        window.startProjector = function() {
+            document.getElementById('overlay').style.display = 'none';
+            masterVideo.play().catch(() => {});
+            listenForPerformers();
+        }
+
+        // Frame rendering loop running at exactly the client screen's hardware frame rate (up to 144Hz)
+        function renderLoop() {
+            if (!masterVideo.paused && !masterVideo.ended) {
+                canvases.forEach(ctx => {
+                    ctx.drawImage(masterVideo, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                });
+            }
+            requestAnimationFrame(renderLoop);
+        }
+        
+        masterVideo.addEventListener('play', () => {
+            requestAnimationFrame(renderLoop);
+        });
+
+        function listenForPerformers() {
+            const q = collection(db, "performances");
+            onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        const data = change.doc.data();
+                        playPerformance(data.videoUrl, data.stageName, change.doc.id, data.storagePath);
+                    }
+                });
+            });
+        }
+
+        function playPerformance(url, name, docId, storagePath) {
+            hud.innerHTML = `LIVE PERFORMANCE: ${name.toUpperCase()}`;
+            masterVideo.src = url;
+            masterVideo.load();
+            masterVideo.play();
+
+            masterVideo.onended = async () => {
+                hud.innerHTML = "CALCULATING PERFORMANCE SCORE...";
+                
+                try {
+                    // Fetch score from local python engine
+                    const res = await fetch('http://localhost:5000/get_score');
+                    const scoreData = await res.json();
+                    
+                    hud.innerHTML = `⭐ ${name.toUpperCase()} SCORED: ${scoreData.score} POINTS! ⭐`;
+
+                    // Trigger server reset
+                    await fetch('http://localhost:5000/reset_score', { method: 'POST' });
+                    
+                    // Clean asset pipeline out of Firebase
+                    await deleteDoc(doc(db, "performances", docId));
+                    if (storagePath) {
+                        await deleteObject(ref(storage, storagePath));
+                    }
+                } catch(e) {
+                    console.log("Telemetry Engine Offline. Cleaning records...");
+                    await deleteDoc(doc(db, "performances", docId));
+                }
+
+                setTimeout(() => {
+                    hud.innerHTML = "AWAITING NEXT PERFORMER...";
+                    canvases.forEach(ctx => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height));
+                }, 7000);
+            };
+        }
+    </script>
+</body>
+</html>
