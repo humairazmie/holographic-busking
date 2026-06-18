@@ -16,46 +16,42 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Wait for the DOM to be fully loaded
-window.addEventListener('DOMContentLoaded', () => {
-    const btn = document.querySelector('button'); // Targets your "SEND SYSTEM DATA"
+window.addEventListener('DOMContentLoaded', function() {
+    const btn = document.querySelector('button');
     const fileIn = document.querySelector('input[type="file"]');
     const nameIn = document.querySelector('input[type="text"]');
     
-    // Create status display area if it doesn't exist
+    // Create the text feedback area
     let status = document.getElementById('status-msg');
-    if (!status) {
+    if (!status && btn) {
         status = document.createElement('div');
         status.id = 'status-msg';
         status.style.marginTop = '20px';
-        status.style.color = '#fff';
+        status.style.color = '#ec4899'; // Pink to match your UI
+        status.style.fontWeight = 'bold';
         btn.parentNode.appendChild(status);
     }
 
-    btn.onclick = async (e) => {
-        e.preventDefault();
-        if (!fileIn.files[0] || !nameIn.value) {
-            status.innerText = "Please fill in all fields.";
-            return;
-        }
-
-        const file = fileIn.files[0];
-        const path = performances/${Date.now()}_${file.name};
-        const uploadTask = uploadBytesResumable(ref(storage, path), file);
-
-        uploadTask.on('state_changed', 
-            (s) => status.innerText = Uploading: ${Math.round((s.bytesTransferred/s.totalBytes)*100)}%,
-            (err) => status.innerText = "Error: " + err.message,
-            async () => {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                await addDoc(collection(db, "performances"), {
-                    stageName: nameIn.value,
-                    videoUrl: url,
-                    storagePath: path,
-                    timestamp: new Date()
-                });
-                status.innerText = "Upload Complete! Check the projector.";
+    if (btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Check if user filled everything out
+            if (!fileIn  !fileIn.files[0]  !nameIn || !nameIn.value) {
+                status.innerText = "❌ Please type a name and select a video.";
+                return;
             }
-        );
-    };
-});
+
+            const file = fileIn.files[0];
+            const path = "performances/" + Date.now() + "_" + file.name;
+            const storageRef = ref(storage, path);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            // The highly explicit upload loop (No shortcuts!)
+            uploadTask.on('state_changed', 
+                function(snapshot) {
+                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                    status.innerText = "📡 Uploading: " + progress + "%";
+                },
+                function(error) {
+                    status.innerText = "
